@@ -6,6 +6,7 @@ public class TouchData {
     public static final String TOUCH_TYPE_CLICK = "L";
     public static final String TOUCH_TYPE_LONG_CLICK = "R";
     public static final String TOUCH_TYPE_MOVE = "M";
+    public static final String TOUCH_TYPE_SCROLL = "S";
 
     private String head;
     private String type;

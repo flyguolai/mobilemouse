@@ -4,6 +4,7 @@
     <string name="app_name">MobileControlClient</string>
     <string name="action_auto_discovery">Auto Discovery</string>
     <string name="action_disconnect">Disconnect</string>
+    <string name="fast_connect">Fast Connect</string>
     <string name="action_qr_scan">QR Scan</string>
 
     <string name="connecting">Connecting…</string>

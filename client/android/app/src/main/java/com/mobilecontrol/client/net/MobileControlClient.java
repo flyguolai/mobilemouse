@@ -119,6 +119,12 @@ public class MobileControlClient {
         mNetThreadHandler.sendEmptyMessage(NetworkThread.MSG_FIND_SERVER);
     }
 
+    public void fastConnectByQrCode(){
+        Log.d(TAG, "fastConnect");
+
+        mNetThreadHandler.sendMessage(Message.obtain(mNetThreadHandler, NetworkThread.MSG_ON_QR_SCANNED));
+    }
+
     public void disconnect() {
         if (mConnectionStatus != DISCONNECTED && mNetworkThread != null) {
             mNetworkThread.disconnect(false);
@@ -151,7 +157,7 @@ public class MobileControlClient {
         public static final int MSG_SEND = 2;
 
         private Socket mClientSoc;
-        private String mServerIp;// = "172.17.106.55";
+        private String mServerIp = "172.17.30.18";
         private DataOutputStream out;
 
         public NetworkThread(String name) {
@@ -163,7 +169,10 @@ public class MobileControlClient {
             if (found) {
                 mServerIp = serverIp;
                 mConnectionStatus = CONNECTED;
-            } else {
+            } else if(!mServerIp.isEmpty()) {
+                mConnectionStatus = CONNECTED;
+                found = true;
+            }else {
                 quitAndMarkDisconnected();
             }
             mOnConnectListener.onFindServerComplete(found);

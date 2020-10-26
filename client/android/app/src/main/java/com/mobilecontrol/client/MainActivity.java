@@ -2,7 +2,9 @@ package com.mobilecontrol.client;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.nfc.Tag;
 import android.os.Bundle;
+import android.text.method.Touch;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -16,10 +18,12 @@ import com.mobilecontrol.client.data.TouchData;
 import com.mobilecontrol.client.net.MobileControlClient;
 import com.mobilecontrol.client.net.MobileControlClient.OnConnectListener;
 import com.mobilecontrol.client.qrscan.QRScannerActivity;
+import com.mobilecontrol.client.state.StateManager;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
     protected static final String TAG = "MainActivity";
+    private StateManager stateManager;
 
     private static final int REQ_CODE_SCAN = 100;
 
@@ -70,42 +74,68 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
+
+                int fingerCount = event.getPointerCount();
+                int i = 0 ;
+                int sumX = 0;
+                int sumY = 0;
+                for(i = 0 ; i < fingerCount; i++){
+                    sumX += event.getX(i);
+                    sumY += event.getY(i);
+                }
+
+                float x =  sumX / fingerCount;
+                float y =  sumY / fingerCount;
+
+                switch (event.getAction() & MotionEvent.ACTION_MASK) {
+
                     case MotionEvent.ACTION_DOWN:
-                        downX = lastX = event.getX();
-                        downY = lastY = event.getY();
+
+                        downX = lastX = x;
+                        downY = lastY = y;
                         downTime = System.currentTimeMillis();
+
+                        stateManager.setState(stateManager.moveState);
+
+                        break;
+                    case MotionEvent.ACTION_POINTER_DOWN:
+                        downX = lastX = x;
+                        downY = lastY = y;
+                        if(event.getPointerCount() == 2){
+                            stateManager.setState(stateManager.scrollState);
+                        }else{
+                            stateManager.nextState();
+                        }
                         break;
                     case MotionEvent.ACTION_MOVE:
-                        float x = event.getX();
-                        float y = event.getY();
+
+
                         float dx = x - lastX;
                         float dy = y - lastY;
+                        stateManager.move(dx,dy);
                         lastX = x;
                         lastY = y;
-
-                        TouchData td = new TouchData();
-                        td.setType(TouchData.TOUCH_TYPE_MOVE);
-                        td.setX(mSpeed * (int) dx);
-                        td.setY(mSpeed * (int) dy);
-                        send(td);
                         break;
                     case MotionEvent.ACTION_UP:
-                        x = event.getX();
-                        y = event.getY();
-                        dx = x - downX;
-                        dy = y - downY;
-                        if (dx < 2 && dy < 2) {
-                            // this is a click event
-                            TouchData td_c = new TouchData();
-                            long tx = System.currentTimeMillis() - downTime;
-                            Log.d(TAG, "tx " + tx);
-                            td_c.setType(tx > mLongClickTime ? TouchData.TOUCH_TYPE_LONG_CLICK
-                                    : TouchData.TOUCH_TYPE_CLICK);
-//                        td_c.setX((int) x);
-//                        td_c.setY((int) y);
-                            send(td_c);
-                        }
+//                        float x = event.getX();
+//                        float y = event.getY();
+//                        float dx = x - downX;
+//                        float dy = y - downY;
+//                        if (dx < 2 && dy < 2) {
+//                            // this is a click event
+//                            TouchData td_c = new TouchData();
+//                            long tx = System.currentTimeMillis() - downTime;
+//                            Log.d(TAG, "tx " + tx);
+//                            td_c.setType(tx > mLongClickTime ? TouchData.TOUCH_TYPE_LONG_CLICK
+//                                    : TouchData.TOUCH_TYPE_CLICK);
+////                        td_c.setX((int) x);
+////                        td_c.setY((int) y);
+//                            send(td_c);
+//                        }
+                        stateManager.prevState();
+                        break;
+                    case MotionEvent.ACTION_POINTER_UP:
+                        stateManager.prevState();
                         break;
                 }
                 return true;
@@ -124,8 +154,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
 //            }
 
             app.setMobileControlClient(mControlClient);
-        }
 
+            this.stateManager = new StateManager(mControlClient);
+        }
     }
 
     @Override
@@ -157,6 +188,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
                     Toast.makeText(this, R.string.already_connected, Toast.LENGTH_LONG).show();
                 } else {
                     startQRScan();
+                }
+                return true;
+            case R.id.fast_connect:
+                if (mControlClient.isConnected()) {
+                    Toast.makeText(this, R.string.already_connected, Toast.LENGTH_LONG).show();
+                } else {
+                    mControlClient.fastConnectByQrCode();
                 }
                 return true;
             case R.id.action_disconnect:
